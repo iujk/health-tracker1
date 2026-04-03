@@ -128,6 +128,31 @@
     .tbtn-start:active { opacity: 0.75; }
   }
 
+
+  /* ===== 식단 모바일 최적화 ===== */
+  @media (max-width: 600px) {
+    /* 식단 입력 폼 */
+    #dietDate { width: 100% !important; }
+    #dietMeal { width: 100% !important; }
+    #dietProtein { width: 100% !important; }
+    #dietCalories { width: 100% !important; }
+    #dietRating { width: 100% !important; }
+    /* 오늘 단백질 숫자 크기 */
+    #todayDietSummary [style*="font-size:28px"] { font-size: 22px !important; }
+    /* 식단 카드 */
+    .diet-card { background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:8px; }
+    .diet-card-top { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+    .diet-card-content { font-size:13px; color:var(--text); line-height:1.4; margin-bottom:6px; }
+    .diet-card-bottom { display:flex; align-items:center; justify-content:space-between; }
+    /* 테이블 모바일에서 숨김 */
+    .diet-table-wrap { display:none; }
+    .diet-cards-wrap { display:block; }
+  }
+  @media (min-width: 601px) {
+    .diet-table-wrap { display:block; }
+    .diet-cards-wrap { display:none; }
+  }
+
 </style>
 </head>
 <body>
@@ -263,22 +288,27 @@
 <div class="page" id="page-diet">
   <div class="card">
     <div class="card-title"><span class="dot"></span>식단 기록</div>
-    <div class="form-row">
-      <div class="form-group"><label>날짜</label><input type="date" id="dietDate" style="width:160px"></div>
-      <div class="form-group"><label>구분</label><select id="dietMeal" style="width:110px"><option value="아침">아침</option><option value="점심" selected>점심</option><option value="저녁">저녁</option><option value="간식">간식</option></select></div>
+    <div class="form-row" style="gap:8px">
+      <div class="form-group" style="flex:1"><label>날짜</label><input type="date" id="dietDate" style="width:100%"></div>
+      <div class="form-group" style="flex:1"><label>구분</label><select id="dietMeal" style="width:100%"><option value="아침">아침</option><option value="점심" selected>점심</option><option value="저녁">저녁</option><option value="간식">간식</option></select></div>
     </div>
-    <div class="form-row"><div class="form-group" style="flex:1"><label>음식 내용</label><textarea id="dietContent" placeholder="밥 + 제육볶음 + 김치 + 나물" style="width:100%"></textarea></div></div>
-    <div class="form-row">
-      <div class="form-group"><label>단백질(g)</label><input type="number" id="dietProtein" placeholder="35" style="width:120px"></div>
-      <div class="form-group"><label>칼로리(kcal)</label><input type="number" id="dietCalories" placeholder="600" style="width:120px"></div>
-      <div class="form-group"><label>평가</label><select id="dietRating" style="width:120px"><option value="">—</option><option value="✅ 좋음">✅ 좋음</option><option value="⚠️ 단백질 부족">⚠️ 단백질 부족</option><option value="❌ 부족">❌ 부족</option></select></div>
-      <button class="btn btn-primary" id="btnSaveDiet" style="align-self:flex-end">기록</button>
+    <div class="form-row"><div class="form-group" style="flex:1"><label>음식 내용</label><textarea id="dietContent" placeholder="밥 + 제육볶음 + 김치 + 나물" style="width:100%;min-height:60px"></textarea></div></div>
+    <div class="form-row" style="gap:8px">
+      <div class="form-group" style="flex:1"><label>단백질(g)</label><input type="number" id="dietProtein" placeholder="35" style="width:100%"></div>
+      <div class="form-group" style="flex:1"><label>칼로리(kcal)</label><input type="number" id="dietCalories" placeholder="600" style="width:100%"></div>
+      <div class="form-group" style="flex:1"><label>평가</label><select id="dietRating" style="width:100%"><option value="">—</option><option value="✅ 좋음">✅ 좋음</option><option value="⚠️ 단백질 부족">⚠️ 단백질 부족</option><option value="❌ 부족">❌ 부족</option></select></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <button class="btn btn-primary" id="btnSaveDiet">기록</button>
     </div>
   </div>
   <div class="card"><div class="card-title"><span class="dot"></span>오늘 식단 요약</div><div id="todayDietSummary"><div style="color:var(--text2);font-size:13px">오늘 기록된 식단이 없습니다.</div></div></div>
   <div class="card">
     <div class="card-title"><span class="dot"></span>식단 기록 목록</div>
-    <table><thead><tr><th>날짜</th><th>구분</th><th>음식</th><th>단백질</th><th>kcal</th><th>평가</th><th></th></tr></thead><tbody id="dietTable"></tbody></table>
+    <div class="diet-table-wrap">
+      <table><thead><tr><th>날짜</th><th>구분</th><th>음식</th><th>단백질</th><th>kcal</th><th>평가</th><th></th></tr></thead><tbody id="dietTable"></tbody></table>
+    </div>
+    <div class="diet-cards-wrap" id="dietCards"></div>
   </div>
 </div>
 
@@ -813,6 +843,8 @@ function saveDiet() {
 function renderDietTable() {
   var data = loadData();
   var rows = data.diets.slice().reverse();
+
+  // 테이블 (PC)
   var tbody = document.getElementById('dietTable');
   tbody.innerHTML = '';
   rows.forEach(function(d) {
@@ -821,6 +853,30 @@ function renderDietTable() {
     tr.innerHTML = '<td class="td-mono" style="white-space:nowrap">' + d.date + '</td><td><span class="badge badge-blue">' + d.meal + '</span></td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + d.content + '">' + d.content + '</td><td class="td-accent">' + (d.protein ? d.protein+'g' : '—') + '</td><td style="color:var(--text2)">' + (d.calories || '—') + '</td><td>' + (d.rating||'—') + '</td><td>' + delBtn + '</td>';
     tr.querySelector('.del-btn').addEventListener('click', function() { deleteDiet(parseInt(this.getAttribute('data-id'))); });
     tbody.appendChild(tr);
+  });
+
+  // 카드 (모바일)
+  var cardsWrap = document.getElementById('dietCards');
+  if (!cardsWrap) return;
+  cardsWrap.innerHTML = '';
+  rows.forEach(function(d) {
+    var card = document.createElement('div');
+    card.className = 'diet-card';
+    var ratingColor = d.rating && d.rating.includes('좋음') ? 'var(--accent)' : d.rating && d.rating.includes('부족') ? 'var(--warn)' : 'var(--text2)';
+    card.innerHTML =
+      '<div class="diet-card-top">' +
+        '<span class="badge badge-blue">' + d.meal + '</span>' +
+        '<span style="font-family:Space Mono,monospace;font-size:11px;color:var(--text2)">' + d.date + '</span>' +
+        '<span style="margin-left:auto;font-family:Space Mono,monospace;font-size:13px;color:var(--accent);font-weight:700">' + (d.protein ? d.protein + 'g' : '') + '</span>' +
+        '<span style="font-size:12px;color:var(--text2)">' + (d.calories ? d.calories + 'kcal' : '') + '</span>' +
+      '</div>' +
+      '<div class="diet-card-content">' + d.content + '</div>' +
+      '<div class="diet-card-bottom">' +
+        '<span style="font-size:11px;color:' + ratingColor + '">' + (d.rating || '') + '</span>' +
+        '<button class="del-btn" data-id="' + d.id + '">✕</button>' +
+      '</div>';
+    card.querySelector('.del-btn').addEventListener('click', function() { deleteDiet(parseInt(this.getAttribute('data-id'))); });
+    cardsWrap.appendChild(card);
   });
 }
 
