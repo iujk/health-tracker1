@@ -135,6 +135,7 @@
 <div class="topbar">
   <div class="logo">HEALTH.LOG</div>
   <div class="today" id="topbarDate"></div>
+  <button id="syncBtn" onclick="openSyncModal()" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:5px 11px;font-size:14px;cursor:pointer;color:var(--text2)" title="기기간 동기화">☁️</button>
   <button id="installBtn" onclick="installApp()" style="display:none;background:var(--accent);color:#000;border:none;border-radius:6px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">📲 설치</button>
 </div>
 <div class="nav-tabs">
@@ -1031,6 +1032,139 @@ window.addEventListener('appinstalled', function() {
   var btn = document.getElementById('installBtn');
   if (btn) btn.style.display = 'none';
   showToast('✅ 앱이 홈 화면에 추가됐습니다!');
+});
+</script>
+
+
+<!-- SYNC MODAL -->
+<div id="syncModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:500;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--accent);border-radius:16px;padding:28px 24px;width:92%;max-width:420px;margin:auto;margin-top:80px">
+    <div style="font-size:15px;font-weight:700;color:var(--accent);margin-bottom:6px">☁️ 기기간 동기화 설정</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:20px">Firebase Realtime Database를 사용합니다 (무료)</div>
+
+    <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px">
+      <label style="font-size:10px;letter-spacing:1px;color:var(--text2);text-transform:uppercase">Firebase Database URL</label>
+      <input type="url" id="syncUrl" placeholder="https://xxx-default-rtdb.firebaseio.com"
+        style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:9px 12px;font-size:13px;outline:none">
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:20px">
+      <label style="font-size:10px;letter-spacing:1px;color:var(--text2);text-transform:uppercase">동기화 코드 (본인만 아는 숫자/문자)</label>
+      <input type="text" id="syncPin" placeholder="예: JW2026" maxlength="20"
+        style="width:160px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:9px 12px;font-size:13px;outline:none">
+      <div style="font-size:11px;color:var(--text2)">PC와 폰에 동일한 코드 입력 → 같은 데이터 공유</div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button onclick="saveSyncConfig()" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">저장</button>
+      <button onclick="syncPush()" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:9px 16px;font-size:13px;cursor:pointer;color:var(--text)">📤 올리기</button>
+      <button onclick="syncPull(true)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:9px 16px;font-size:13px;cursor:pointer;color:var(--text)">📥 가져오기</button>
+    </div>
+
+    <div id="syncStatus" style="font-size:12px;color:var(--text2);margin-bottom:14px"></div>
+
+    <div style="background:var(--bg3);border-radius:8px;padding:12px;font-size:11px;color:var(--text2);line-height:1.7">
+      <b style="color:var(--text)">Firebase 무료 설정 (1분)</b><br>
+      1. <a href="https://console.firebase.google.com" target="_blank" style="color:var(--accent3)">console.firebase.google.com</a> 접속<br>
+      2. 프로젝트 만들기 → 이름 입력 → 계속<br>
+      3. 좌측 빌드 → Realtime Database → 데이터베이스 만들기<br>
+      4. 테스트 모드로 시작 → URL 복사 (https://xxx-rtdb.firebaseio.com)<br>
+      5. 위에 URL + 동기화 코드 입력 → 저장
+    </div>
+
+    <button onclick="closeSyncModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>
+  </div>
+</div>
+
+<script>
+// ===== FIREBASE SYNC =====
+var syncCfg = {
+  url: localStorage.getItem('sync_url') || '',
+  pin: localStorage.getItem('sync_pin') || '',
+  get enabled() { return !!(this.url && this.pin); }
+};
+
+function openSyncModal() {
+  document.getElementById('syncUrl').value = syncCfg.url;
+  document.getElementById('syncPin').value = syncCfg.pin;
+  var m = document.getElementById('syncModal');
+  m.style.display = 'flex';
+  updateSyncBtn();
+}
+function closeSyncModal() {
+  document.getElementById('syncModal').style.display = 'none';
+}
+document.getElementById('syncModal').addEventListener('click', function(e) {
+  if (e.target === this) closeSyncModal();
+});
+
+function saveSyncConfig() {
+  var url = document.getElementById('syncUrl').value.trim().replace(/\/$/, '');
+  var pin = document.getElementById('syncPin').value.trim();
+  if (!url || !pin) { setSyncStatus('URL과 동기화 코드를 입력하세요', 'warn'); return; }
+  syncCfg.url = url;
+  syncCfg.pin = pin;
+  localStorage.setItem('sync_url', url);
+  localStorage.setItem('sync_pin', pin);
+  setSyncStatus('설정 저장 완료! 데이터를 올리시겠어요?', 'ok');
+  updateSyncBtn();
+}
+
+function updateSyncBtn() {
+  var btn = document.getElementById('syncBtn');
+  if (btn) btn.style.color = syncCfg.enabled ? 'var(--accent)' : 'var(--text2)';
+}
+
+function setSyncStatus(msg, type) {
+  var el = document.getElementById('syncStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = type === 'ok' ? 'var(--accent)' : type === 'warn' ? 'var(--warn)' : 'var(--danger)';
+}
+
+async function syncPush(silent) {
+  if (!syncCfg.enabled) { if (!silent) openSyncModal(); return; }
+  try {
+    var data = loadData();
+    var res = await fetch(syncCfg.url + '/health/' + syncCfg.pin + '.json', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({weights: data.weights, diets: data.diets, workouts: data.workouts, updated: new Date().toISOString()})
+    });
+    if (res.ok) {
+      if (!silent) { setSyncStatus('☁️ 업로드 완료 ' + new Date().toLocaleTimeString(), 'ok'); showToast('☁️ 동기화 업로드 완료', 'done'); }
+    } else { if (!silent) setSyncStatus('업로드 실패 (HTTP ' + res.status + ')', 'err'); }
+  } catch(e) { if (!silent) setSyncStatus('오류: ' + e.message, 'err'); }
+}
+
+async function syncPull(notify) {
+  if (!syncCfg.enabled) { openSyncModal(); return; }
+  try {
+    var res = await fetch(syncCfg.url + '/health/' + syncCfg.pin + '.json');
+    if (!res.ok) { if (notify) setSyncStatus('가져오기 실패', 'err'); return; }
+    var data = await res.json();
+    if (!data) { if (notify) setSyncStatus('서버에 데이터 없음', 'warn'); return; }
+    if (data.weights) saveData('weights', data.weights);
+    if (data.diets) saveData('diets', data.diets);
+    if (data.workouts) saveData('workouts', data.workouts);
+    renderDashboard(); renderWeightTable(); renderDietTable(); renderTodayDiet(); renderHistory();
+    if (notify) { setSyncStatus('📥 가져오기 완료 ' + new Date().toLocaleTimeString(), 'ok'); showToast('📥 동기화 가져오기 완료', 'done'); }
+  } catch(e) { if (notify) setSyncStatus('오류: ' + e.message, 'err'); }
+}
+
+// 저장 시 자동 동기화
+var _origSaveData = saveData;
+saveData = function(key, val) {
+  _origSaveData(key, val);
+  if (syncCfg.enabled) setTimeout(function() { syncPush(true); }, 500);
+};
+
+// 앱 시작 시 자동 Pull
+window.addEventListener('load', function() {
+  updateSyncBtn();
+  if (syncCfg.enabled) {
+    setTimeout(function() { syncPull(false); }, 1000);
+  }
 });
 </script>
 
