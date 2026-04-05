@@ -30,7 +30,7 @@ module.exports = async function handler(req, res) {
           }
         ]
       }],
-      generationConfig: { maxOutputTokens: 300, temperature: 0.1 }
+      generationConfig: { maxOutputTokens: 1000, temperature: 0.1 }
     };
 
     const response = await fetch(url, {
@@ -58,8 +58,10 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    // 마크다운 코드블록 제거 후 JSON 추출
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return res.status(500).json({ error: 'parse error - response: ' + text.substring(0, 300) });
+    if (!jsonMatch) return res.status(500).json({ error: 'parse error - response: ' + text.substring(0, 500) });
 
     const result = JSON.parse(jsonMatch[0]);
 
