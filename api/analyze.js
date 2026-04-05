@@ -30,7 +30,11 @@ module.exports = async function handler(req, res) {
           }
         ]
       }],
-      generationConfig: { maxOutputTokens: 1000, temperature: 0.1 }
+      generationConfig: { 
+        maxOutputTokens: 1000, 
+        temperature: 0.1,
+        thinkingConfig: { thinkingBudget: 0 }
+      }
     };
 
     const response = await fetch(url, {
@@ -50,9 +54,15 @@ module.exports = async function handler(req, res) {
     var text = '';
     var parts = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts;
     if (parts) {
-      // 모든 parts 텍스트 합치기 (thinking 포함)
+      // thought=true 블록 제외하고 실제 응답만 추출
       for (var i = 0; i < parts.length; i++) {
-        if (parts[i].text) text += parts[i].text;
+        if (!parts[i].thought && parts[i].text) text += parts[i].text;
+      }
+      // thought 필드가 없는 경우 전체 사용
+      if (!text) {
+        for (var i = 0; i < parts.length; i++) {
+          if (parts[i].text) text += parts[i].text;
+        }
       }
     }
 
