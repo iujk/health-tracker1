@@ -59,7 +59,7 @@ module.exports = async function handler(req, res) {
     }
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return res.status(500).json({ error: 'parse error', raw: text });
+    if (!jsonMatch) return res.status(500).json({ error: 'parse error - response: ' + text.substring(0, 300) });
 
     const result = JSON.parse(jsonMatch[0]);
 
