@@ -58,10 +58,12 @@ module.exports = async function handler(req, res) {
 
     // 마크다운 코드블록 제거 후 JSON 추출
     text = text.replace(/```json/g, '').replace(/```/g, '');
-    const jsonMatch = text.match(/\{[^{}]*\}/);
-    if (!jsonMatch) return res.status(500).json({ error: 'parse error - response: ' + text.substring(0, 500) });
-
-    const result = JSON.parse(jsonMatch[0]);
+    var start = text.indexOf('{');
+    var end = text.lastIndexOf('}');
+    if (start === -1 || end === -1 || end <= start) {
+      return res.status(500).json({ error: 'parse error - response: ' + text.substring(0, 500) });
+    }
+    const result = JSON.parse(text.slice(start, end + 1));
 
     // rating 한글로 변환
     if (result.rating === 'good') result.rating = '\u2705 \uc88b\uc74c';
