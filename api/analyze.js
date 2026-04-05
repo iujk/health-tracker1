@@ -13,7 +13,7 @@ module.exports = async function handler(req, res) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
 
-    const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash-001';
+    const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
     const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
 
     const payload = {
