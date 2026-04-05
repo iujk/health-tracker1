@@ -319,11 +319,17 @@
   <div class="card">
     <div class="card-title"><span class="dot"></span>식단 기록</div>
     <!-- 사진 분석 -->
-    <input type="file" id="foodPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="analyzeFoodPhoto(this)">
+    <input type="file" id="foodPhotoCamera" accept="image/*" capture="environment" style="display:none" onchange="analyzeFoodPhoto(this)">
+    <input type="file" id="foodPhotoGallery" accept="image/*" style="display:none" onchange="analyzeFoodPhoto(this)">
     <img id="photoPreview" class="photo-preview">
-    <button class="photo-btn" onclick="document.getElementById('foodPhotoInput').click()">
-      📷 음식 사진으로 자동 분석
-    </button>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="photo-btn" style="flex:1;margin-bottom:0" onclick="document.getElementById('foodPhotoCamera').click()">
+        📷 카메라로 촬영
+      </button>
+      <button class="photo-btn" style="flex:1;margin-bottom:0;border-color:var(--accent3);color:var(--accent3);background:rgba(77,159,255,0.08)" onclick="document.getElementById('foodPhotoGallery').click()">
+        🖼️ 갤러리에서 선택
+      </button>
+    </div>
     <div id="photoAnalyzing" style="display:none" class="photo-analyzing">
       <span class="spin">⏳</span> AI가 음식을 분석 중입니다...
     </div>
@@ -1249,17 +1255,43 @@ async function syncPull(notify) {
 }
 
 // 저장 시 자동 동기화
+// ===== 자동 동기화: saveData 호출 시 즉시 Firebase 업로드 =====
 var _origSaveData = saveData;
 saveData = function(key, val) {
   _origSaveData(key, val);
-  if (syncCfg.enabled) setTimeout(function() { syncPush(true); }, 500);
+  if (syncCfg && syncCfg.enabled) {
+    clearTimeout(saveData._debounce);
+    saveData._debounce = setTimeout(function() {
+      syncPush(true);
+    }, 800); // 0.8초 디바운스 (연속 저장 시 한 번만 업로드)
+  }
 };
 
 // 앱 시작 시 자동 Pull
 window.addEventListener('load', function() {
   updateSyncBtn();
-  if (syncCfg.enabled) {
-    setTimeout(function() { syncPull(false); }, 1000);
+  if (syncCfg && syncCfg.enabled) {
+    setTimeout(function() {
+      syncPull(false).then(function() {
+        // Pull 후 모든 화면 갱신
+        renderDashboard();
+        renderWeightTable();
+        renderDietTable();
+        renderTodayDiet();
+      }).catch(function(){});
+    }, 1200);
+  }
+});
+
+// Page Visibility API: 앱 다시 열면 자동 Pull
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden && syncCfg && syncCfg.enabled) {
+    syncPull(false).then(function() {
+      renderDashboard();
+      renderWeightTable();
+      renderDietTable();
+      renderTodayDiet();
+    }).catch(function(){});
   }
 });
 </script>
@@ -1341,7 +1373,8 @@ async function analyzeFoodPhoto(input) {
   }
 
   // input 초기화 (같은 파일 재선택 가능하게)
-  input.value = '';
+  document.getElementById('foodPhotoCamera').value = '';
+  document.getElementById('foodPhotoGallery').value = '';
 }
 
 function fileToBase64(file) {
