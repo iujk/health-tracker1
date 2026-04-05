@@ -26,7 +26,7 @@ export default async function handler(req, res) {
               }
             },
             {
-              text: '이 음식 사진을 분석해서 JSON으로만 응답하세요. 다른 텍스트 없이 JSON만. 형식: {"food":"음식명","protein":숫자,"calories":숫자,"rating":"✅ 좋음 또는 ⚠️ 단백질 부족 또는 ❌ 부족","memo":"간단한 설명 1줄"} 단백질과 칼로리는 정수로. 한국 음식 기준으로 추정하세요. 사진에 여러 음식이 있으면 전체를 합산하세요.'
+              text: '이 음식 사진을 분석해서 JSON으로만 응답하세요. 다른 텍스트 없이 JSON만. 형식: {"food":"음식명","protein":숫자,"calories":숫자,"rating":"\u2705 좋음 또는 \u26a0\ufe0f 단백질 부족 또는 \u274c 부족","memo":"간단한 설명 1줄"} 단백질과 칼로리는 정수로. 한국 음식 기준으로 추정하세요. 사진에 여러 음식이 있으면 전체를 합산하세요.'
             }
           ]
         }],
@@ -51,3 +51,11 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb'
+    }
+  }
+};
