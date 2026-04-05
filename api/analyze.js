@@ -50,17 +50,15 @@ module.exports = async function handler(req, res) {
     var text = '';
     var parts = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts;
     if (parts) {
+      // 모든 parts 텍스트 합치기 (thinking 포함)
       for (var i = 0; i < parts.length; i++) {
-        if (!parts[i].thought && parts[i].text) {
-          text = parts[i].text;
-          break;
-        }
+        if (parts[i].text) text += parts[i].text;
       }
     }
 
     // 마크다운 코드블록 제거 후 JSON 추출
-    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    text = text.replace(/```json/g, '').replace(/```/g, '');
+    const jsonMatch = text.match(/\{[^{}]*\}/);
     if (!jsonMatch) return res.status(500).json({ error: 'parse error - response: ' + text.substring(0, 500) });
 
     const result = JSON.parse(jsonMatch[0]);
