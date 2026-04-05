@@ -46,7 +46,17 @@ module.exports = async function handler(req, res) {
     }
 
     const data = JSON.parse(responseText);
-    const text = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) || '';
+    // thinking 모델은 parts 배열에 thought 블록이 먼저 오므로 전체 순회
+    var text = '';
+    var parts = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts;
+    if (parts) {
+      for (var i = 0; i < parts.length; i++) {
+        if (!parts[i].thought && parts[i].text) {
+          text = parts[i].text;
+          break;
+        }
+      }
+    }
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return res.status(500).json({ error: 'parse error', raw: text });
