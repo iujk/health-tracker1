@@ -30,8 +30,7 @@ module.exports = async function handler(req, res) {
           }
         ]
       }],
-      generationConfig: { maxOutputTokens: 300, temperature: 0.1 },
-      thinkingConfig: { thinkingBudget: 0 }
+      generationConfig: { maxOutputTokens: 300, temperature: 0.1 }
     };
 
     const response = await fetch(url, {
