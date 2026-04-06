@@ -381,7 +381,7 @@
 <script>
 // ===== DATA =====
 // ===== VERSION CHECK (버전 변경 시 localStorage 리셋) =====
-var DATA_VERSION = '4';
+var DATA_VERSION = '5';
 
 var defaultWeights = [
   {date:'2026-03-18',weight:68.3,note:'아침 공복'},{date:'2026-03-19',weight:68.1,note:'아침 공복'},
@@ -576,6 +576,8 @@ var timerSeconds = 120;
 var timerRunning = false;
 var timerMode = 'countdown';
 var timerTarget = 120;
+var timerStartedAt = null;
+var timerSecondsAtStart = 120;
 
 function formatTime(s) {
   var m = Math.floor(Math.abs(s) / 60).toString().padStart(2, '0');
@@ -596,30 +598,36 @@ function setTimerPreset(secs) {
   }
   document.getElementById('timerDisplay').className = 'timer-display';
 }
+function timerTick() {
+  if (!timerRunning || !timerStartedAt) return;
+  var elapsed = Math.floor((Date.now() - timerStartedAt) / 1000);
+  var d = document.getElementById('timerDisplay');
+  if (timerMode === 'countdown') {
+    timerSeconds = timerSecondsAtStart - elapsed;
+    if (timerSeconds > 0) {
+      d.textContent = formatTime(timerSeconds);
+      d.className = 'timer-display' + (timerSeconds <= 10 ? ' warning' : '');
+    } else {
+      d.textContent = '완료!';
+      d.className = 'timer-display done-color';
+      timerStop();
+      showToast('⏰ 휴식 완료! 다음 세트 시작하세요', 'done');
+      if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+    }
+  } else {
+    timerSeconds = elapsed;
+    d.textContent = formatTime(timerSeconds);
+  }
+}
 function timerStart() {
   if (timerRunning) return;
   timerRunning = true;
   if (timerMode === 'countdown' && timerSeconds <= 0) timerSeconds = timerTarget;
+  timerStartedAt = Date.now();
+  timerSecondsAtStart = timerSeconds;
   document.getElementById('btnStart').style.display = 'none';
   document.getElementById('btnStop').style.display = 'inline-flex';
-  timerInterval = setInterval(function() {
-    if (timerMode === 'countdown') {
-      timerSeconds--;
-      var d = document.getElementById('timerDisplay');
-      d.textContent = formatTime(timerSeconds);
-      d.className = 'timer-display' + (timerSeconds <= 10 && timerSeconds > 0 ? ' warning' : '');
-      if (timerSeconds <= 0) {
-        d.textContent = '완료!';
-        d.className = 'timer-display done-color';
-        timerStop();
-        showToast('⏰ 휴식 완료! 다음 세트 시작하세요', 'done');
-        if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
-      }
-    } else {
-      timerSeconds++;
-      document.getElementById('timerDisplay').textContent = formatTime(timerSeconds);
-    }
-  }, 1000);
+  timerInterval = setInterval(timerTick, 300);
 }
 function timerStop() {
   clearInterval(timerInterval); timerRunning = false;
@@ -695,10 +703,14 @@ function renderExercises() {
         var chip = document.createElement('div');
         chip.className = 'set-chip';
         var state = currentExercises[exIdx].setsDone[setNum - 1];
-        if (state === 'done') chip.classList.add('done');
+        if (state === 'done' || typeof state === 'number') chip.classList.add('done');
         else if (state === 'fail') chip.classList.add('fail');
-        chip.textContent = setNum + '세트';
-        chip.title = '클릭: 완료 / 재클릭: 실패 / 3번: 초기화';
+        var chipLabel = setNum + '세트';
+        if (typeof state === 'number') chipLabel = setNum + '세트 ✓' + state;
+        else if (state === 'done') chipLabel = setNum + '세트 ✓';
+        else if (state === 'fail') chipLabel = setNum + '세트 ✗';
+        chip.textContent = chipLabel;
+        chip.title = '완료(횟수입력) → 실패 → 초기화';
         chip.addEventListener('click', function() { logSet(exIdx, setNum); });
         setsDiv.appendChild(chip);
       })(s, idx);
@@ -720,9 +732,22 @@ function renderExercises() {
     (function(exIdx) {
       delBtn.addEventListener('click', function() { removeExercise(exIdx); });
     })(idx);
+    var orderBtns = document.createElement('div');
+    orderBtns.style.cssText = 'display:flex;gap:2px';
+    var upBtn = document.createElement('button');
+    upBtn.className = 'del-btn'; upBtn.textContent = '↑'; upBtn.title = '위로';
+    upBtn.style.opacity = idx === 0 ? '0.2' : '1';
+    var dnBtn = document.createElement('button');
+    dnBtn.className = 'del-btn'; dnBtn.textContent = '↓'; dnBtn.title = '아래로';
+    dnBtn.style.opacity = idx === currentExercises.length - 1 ? '0.2' : '1';
+    (function(exIdx) {
+      upBtn.addEventListener('click', function() { moveExercise(exIdx, -1); });
+      dnBtn.addEventListener('click', function() { moveExercise(exIdx, 1); });
+    })(idx);
+    orderBtns.appendChild(upBtn); orderBtns.appendChild(dnBtn);
 
     // Count display
-    var doneCount = ex.setsDone.filter(function(s) { return s === 'done'; }).length;
+    var doneCount = ex.setsDone.filter(function(s) { return s === 'done' || typeof s === 'number'; }).length;
     var failCount = ex.setsDone.filter(function(s) { return s === 'fail'; }).length;
     var countDiv = document.createElement('div');
     countDiv.style.cssText = 'font-size:11px;color:var(--text2);text-align:right';
@@ -757,6 +782,7 @@ function renderExercises() {
     controlRow.appendChild(timerBtn);
 
     right.appendChild(delBtn);
+    right.appendChild(orderBtns);
     right.appendChild(countDiv);
     right.appendChild(controlRow);
 
@@ -771,14 +797,16 @@ function logSet(exIdx, setNum) {
   var ex = currentExercises[exIdx];
   if (!ex.setsDone) ex.setsDone = [];
   var cur = ex.setsDone[setNum - 1];
-  if (!cur) ex.setsDone[setNum - 1] = 'done';
-  else if (cur === 'done') ex.setsDone[setNum - 1] = 'fail';
-  else ex.setsDone[setNum - 1] = null;
-
-  if (ex.setsDone[setNum - 1] === 'done') {
-    timerReset();
-    timerStart();
+  if (!cur || cur === null) {
+    var inputReps = prompt(ex.name + ' ' + setNum + '세트 — 실제 완료 횟수\n(목표: ' + ex.reps + '개 / 취소=실패)', ex.reps);
+    if (inputReps === null) { ex.setsDone[setNum - 1] = 'fail'; }
+    else { var n = parseInt(inputReps); ex.setsDone[setNum - 1] = (isNaN(n)||n<=0) ? ex.reps : n; }
+    timerReset(); timerStart();
     document.getElementById('timerLast').textContent = '마지막: ' + ex.name + ' ' + setNum + '세트 완료';
+  } else if (cur === 'fail') {
+    ex.setsDone[setNum - 1] = null;
+  } else {
+    ex.setsDone[setNum - 1] = 'fail';
   }
   renderExercises();
 }
@@ -786,6 +814,15 @@ function logSet(exIdx, setNum) {
 function updateWeight(idx, val) { currentExercises[idx].weight = parseFloat(val) || 0; }
 
 function removeExercise(idx) { currentExercises.splice(idx, 1); renderExercises(); }
+
+function moveExercise(idx, dir) {
+  var newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= currentExercises.length) return;
+  var tmp = currentExercises[idx];
+  currentExercises[idx] = currentExercises[newIdx];
+  currentExercises[newIdx] = tmp;
+  renderExercises();
+}
 
 function addCustomExercise() {
   var name = document.getElementById('newExName').value.trim();
@@ -1283,15 +1320,18 @@ window.addEventListener('load', function() {
   }
 });
 
-// Page Visibility API: 앱 다시 열면 자동 Pull
+// Page Visibility API: 앱 다시 열면 자동 Pull + 타이머 복구
 document.addEventListener('visibilitychange', function() {
-  if (!document.hidden && syncCfg && syncCfg.enabled) {
-    syncPull(false).then(function() {
-      renderDashboard();
-      renderWeightTable();
-      renderDietTable();
-      renderTodayDiet();
-    }).catch(function(){});
+  if (!document.hidden) {
+    if (timerRunning) timerTick();
+    if (syncCfg && syncCfg.enabled) {
+      syncPull(false).then(function() {
+        renderDashboard();
+        renderWeightTable();
+        renderDietTable();
+        renderTodayDiet();
+      }).catch(function(){});
+    }
   }
 });
 </script>
@@ -1344,22 +1384,9 @@ async function analyzeFoodPhoto(input) {
     document.getElementById('dietCalories').value = result.calories || '';
     document.getElementById('dietRating').value = result.rating || '';
 
-    // 결과 표시
-    var el = document.getElementById('photoResult');
-    el.style.display = 'block';
-    el.innerHTML =
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
-        '<span style="font-size:18px">🤖</span>' +
-        '<span style="font-weight:700;color:var(--accent)">' + (result.food || '') + '</span>' +
-        '<span style="margin-left:auto">' + (result.rating || '') + '</span>' +
-      '</div>' +
-      '<div style="display:flex;gap:16px;font-family:Space Mono,monospace;font-size:13px">' +
-        '<span>단백질 <b style="color:var(--accent)">' + (result.protein || 0) + 'g</b></span>' +
-        '<span>칼로리 <b style="color:var(--accent3)">' + (result.calories || 0) + 'kcal</b></span>' +
-      '</div>' +
-      (result.memo ? '<div style="margin-top:6px;font-size:11px;color:var(--text2)">' + result.memo + '</div>' : '') +
-      '<div style="margin-top:8px;font-size:11px;color:var(--text2)">✏️ 수정 후 기록 버튼을 눌러주세요</div>';
-
+    // 결과 표시 (수정 가능)
+    window._lastPhotoResult = result;
+    renderPhotoResult(result);
     showToast('📷 분석 완료! 내용을 확인하세요', 'done');
 
   } catch(e) {
@@ -1377,31 +1404,80 @@ async function analyzeFoodPhoto(input) {
   document.getElementById('foodPhotoGallery').value = '';
 }
 
+function renderPhotoResult(result) {
+  var el = document.getElementById('photoResult');
+  el.style.display = 'block'; el.style.borderColor = ''; el.style.background = '';
+  el.innerHTML =
+    '<div style="margin-bottom:10px;font-size:12px;color:var(--text2)">🤖 AI 분석 결과 — 수정 후 재계산 가능</div>' +
+    '<div style="display:flex;flex-direction:column;gap:8px">' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span style="font-size:11px;color:var(--text2);width:50px">음식명</span>' +
+        '<input id="pr_food" style="flex:1;font-size:13px;padding:5px 8px" value="' + (result.food||'').replace(/"/g,'&quot;') + '">' +
+      '</div>' +
+      '<div style="display:flex;gap:8px">' +
+        '<div style="display:flex;align-items:center;gap:6px;flex:1">' +
+          '<span style="font-size:11px;color:var(--text2)">단백질</span>' +
+          '<input id="pr_protein" type="number" style="flex:1;font-size:13px;padding:5px 8px" value="' + (result.protein||0) + '">' +
+          '<span style="font-size:11px;color:var(--text2)">g</span>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:6px;flex:1">' +
+          '<span style="font-size:11px;color:var(--text2)">칼로리</span>' +
+          '<input id="pr_calories" type="number" style="flex:1;font-size:13px;padding:5px 8px" value="' + (result.calories||0) + '">' +
+          '<span style="font-size:11px;color:var(--text2)">kcal</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;margin-top:10px">' +
+      '<button onclick="applyPhotoResult()" style="flex:1;background:var(--accent);color:#000;border:none;border-radius:6px;padding:8px;font-weight:700;font-size:13px;cursor:pointer">✅ 적용</button>' +
+      '<button onclick="recalcPhotoResult()" style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-weight:700;font-size:13px;cursor:pointer">🔄 재계산</button>' +
+    '</div>';
+}
+function applyPhotoResult() {
+  document.getElementById('dietContent').value = document.getElementById('pr_food').value;
+  document.getElementById('dietProtein').value = document.getElementById('pr_protein').value;
+  document.getElementById('dietCalories').value = document.getElementById('pr_calories').value;
+  showToast('✅ 식단 입력란에 적용 완료!', 'done');
+}
+async function recalcPhotoResult() {
+  var foodName = document.getElementById('pr_food').value.trim();
+  if (!foodName) { showToast('음식명을 먼저 입력하세요', 'warn'); return; }
+  document.getElementById('photoAnalyzing').style.display = 'flex';
+  document.getElementById('photoResult').style.display = 'none';
+  try {
+    var res = await fetch('/api/analyze', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({textOnly:true, food:foodName}) });
+    var result = await res.json();
+    if (result.error) throw new Error(result.error);
+    window._lastPhotoResult = result;
+    document.getElementById('photoAnalyzing').style.display = 'none';
+    renderPhotoResult(result);
+    showToast('🔄 재계산 완료!', 'done');
+  } catch(e) {
+    document.getElementById('photoAnalyzing').style.display = 'none';
+    renderPhotoResult(window._lastPhotoResult || {});
+    showToast('재계산 실패: ' + e.message, 'warn');
+  }
+}
 function fileToBase64(file) {
   return new Promise(function(resolve, reject) {
+    var url = URL.createObjectURL(file);
     var img = new Image();
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      img.onload = function() {
-        // 최대 1024px로 리사이즈 + 품질 0.7로 압축
-        var MAX = 1024;
-        var w = img.width, h = img.height;
-        if (w > MAX || h > MAX) {
-          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-          else { w = Math.round(w * MAX / h); h = MAX; }
-        }
-        var canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        var ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        var dataUrl = canvas.toDataURL('image/jpeg', 0.75);
-        resolve(dataUrl.split(',')[1]);
-      };
-      img.onerror = reject;
-      img.src = e.target.result;
+    img.onload = function() {
+      URL.revokeObjectURL(url);
+      var MAX = 800;
+      var w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      var dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+      canvas.width = 1; canvas.height = 1;
+      resolve(dataUrl.split(',')[1]);
     };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    img.onerror = function() { URL.revokeObjectURL(url); reject(new Error('이미지 로드 실패')); };
+    img.src = url;
   });
 }
 </script>
