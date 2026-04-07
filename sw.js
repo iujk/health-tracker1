@@ -44,8 +44,11 @@ self.addEventListener('fetch', function(event) {
   event.respondWith(
     fetch(event.request).then(function(response) {
       if (!response || response.status !== 200) return response;
-      var clone = response.clone();
-      caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, clone); });
+      // GET 요청만 캐시 (PUT/POST/DELETE 등은 Cache API 미지원)
+      if (event.request.method === 'GET') {
+        var clone = response.clone();
+        caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, clone); });
+      }
       return response;
     }).catch(function() {
       return caches.match(event.request);
