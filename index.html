@@ -717,34 +717,46 @@ var lowerRoutine = [
 
 // ===== GZCL 루틴 (T1=5×3+AMRAP / T2=3×10 / T3=2×15+AMRAP) =====
 // 무게 증가 기준: AMRAP +2회 → 상체 +2.5kg / 하체 +5kg
+// 요일별 기본 루틴 매핑 (0=일, 1=월, ..., 6=토). null = 쉬는 날
+var ROUTINE_SCHEDULE = {
+  0: null,        // 일
+  1: 'gzcl_ua',  // 월
+  2: 'gzcl_la',  // 화
+  3: null,        // 수
+  4: 'gzcl_ub',  // 목
+  5: 'gzcl_lb',  // 금
+  6: null         // 토
+};
 var gzclUARoutine = [
-  {name:'[T1] 벤치프레스',weight:75,sets:5,reps:3,note:'T1 고중량 · 마지막 세트 AMRAP · 3분 휴식'},
-  {name:'[T2] OHP',weight:40,sets:3,reps:10,note:'T2 근비대 · 2분 휴식'},
-  {name:'[T2] 바벨로우',weight:55,sets:3,reps:10,note:'T2 근비대 · 스트렙 착용'},
-  {name:'[T3] 레터럴레이즈',weight:7,sets:2,reps:15,note:'T3 · 내릴때 2~3초 버티기'},
-  {name:'[T3] 밴드 페이스풀',weight:0,sets:2,reps:15,note:'T3 · 밴드 사용 · 마지막 세트 AMRAP'}
+  {name:'[T1] 벤치프레스',    weight:75,   sets:5, reps:3,  note:'T1 고중량 · 마지막 세트 AMRAP · 3분 휴식'},
+  {name:'[T2] 클로즈그립 벤치',weight:55,  sets:3, reps:10, note:'T2 근비대 · 2분 휴식'},
+  {name:'[T2] 바벨로우',      weight:55,   sets:3, reps:10, note:'T2 근비대 · 스트렙 착용'},
+  {name:'[T3] 레터럴레이즈',  weight:6.5,  sets:2, reps:15, note:'T3 · 내릴때 2~3초 버티기 · 마지막 세트 AMRAP'},
+  {name:'[T3] 밴드 페이스풀', weight:0,    sets:2, reps:15, note:'T3 · 밴드 사용 · 마지막 세트 AMRAP'}
 ];
 var gzclLARoutine = [
-  {name:'[T1] 스쿼트',weight:100,sets:5,reps:3,note:'T1 고중량 · 마지막 세트 AMRAP · 3분 휴식'},
-  {name:'[T2] RDL',weight:85,sets:4,reps:10,note:'T2 근비대 · 스트렙 착용'},
-  {name:'[T2] 불가리안 스플릿스쿼트',weight:12.5,sets:3,reps:8,note:'T2 · 8회/사이드'},
-  {name:'[T3] 카프레이즈',weight:0,sets:2,reps:20,note:'T3 · 체중 · 마지막 세트 AMRAP'},
-  {name:'[T3] 레그레이즈',weight:0,sets:2,reps:15,note:'T3 · 체중 · 코어'}
+  {name:'[T1] 스쿼트',               weight:107.5, sets:5, reps:3,  note:'T1 고중량 · 마지막 세트 AMRAP · 3분 휴식'},
+  {name:'[T2] RDL',                   weight:80,    sets:3, reps:10, note:'T2 근비대 · 2분 휴식'},
+  {name:'[T3] 불가리안 스플릿스쿼트', weight:10,    sets:2, reps:15, note:'T3 · 마지막 세트 AMRAP'},
+  {name:'[T3] 카프레이즈',            weight:0,     sets:2, reps:15, note:'T3 · 체중 · 마지막 세트 AMRAP'}
 ];
 var gzclUBRoutine = [
-  {name:'[T1] OHP',weight:45,sets:5,reps:3,note:'T1 고중량 · 마지막 세트 AMRAP · 3분 휴식'},
-  {name:'[T2] 벤치프레스',weight:65,sets:3,reps:10,note:'T2 근비대'},
-  {name:'[T2] 바벨로우',weight:55,sets:3,reps:10,note:'T2 근비대 · 스트렙 착용'},
-  {name:'[T3] 턱걸이',weight:0,sets:2,reps:8,note:'T3 · 체중 · AMRAP'},
-  {name:'[T3] 레터럴레이즈',weight:7,sets:2,reps:15,note:'T3 · 내릴때 2~3초 버티기'}
+  {name:'[T1] OHP',          weight:50,  sets:5, reps:3,  note:'T1 고중량 · 마지막 세트 AMRAP · 3분 휴식'},
+  {name:'[T2] 벤치프레스',   weight:65,  sets:3, reps:10, note:'T2 근비대 · 2분 휴식'},
+  {name:'[T2] 바벨로우',     weight:55,  sets:3, reps:10, note:'T2 근비대 · 스트렙 착용'},
+  {name:'[T3] 레터럴레이즈', weight:6.5, sets:2, reps:15, note:'T3 · 마지막 세트 AMRAP'},
+  {name:'[T3] 턱걸이',       weight:0,   sets:2, reps:15, note:'T3 · 체중 · 마지막 세트 AMRAP'}
 ];
 var gzclLBRoutine = [
-  {name:'[T1] 데드리프트',weight:125,sets:5,reps:3,note:'T1 고중량 · 마지막 세트 AMRAP · 3분 휴식'},
-  {name:'[T2] 스쿼트',weight:82.5,sets:3,reps:10,note:'T2 근비대 · 세이프티바 확인'},
-  {name:'[T2] RDL',weight:77.5,sets:3,reps:10,note:'T2 근비대 · 스트렙 착용'},
-  {name:'[T3] 불가리안 스플릿스쿼트',weight:12.5,sets:2,reps:10,note:'T3 · 10회/사이드'},
-  {name:'[T3] 카프레이즈',weight:0,sets:2,reps:20,note:'T3 · 체중 · AMRAP'}
+  {name:'[T1] 데드리프트', weight:140, sets:5, reps:3,  note:'T1 고중량 · 마지막 세트 AMRAP · 3분 휴식'},
+  {name:'[T2] 스쿼트',    weight:90,  sets:3, reps:10, note:'T2 근비대 · 2분 휴식'},
+  {name:'[T3] RDL',        weight:70,  sets:2, reps:15, note:'T3 · 마지막 세트 AMRAP'},
+  {name:'[T3] 카프레이즈', weight:0,   sets:2, reps:15, note:'T3 · 체중 · 마지막 세트 AMRAP'}
 ];
+var EGOJIN_WEIGHTS = [2.5, 3.5, 4.5, 5.5, 6.5, 8, 9, 10, 11.5, 13.5, 16, 18, 20.5, 22.5, 24];
+function isDumbbellExercise(name) {
+  return name.indexOf('레터럴레이즈') !== -1 || name.indexOf('불가리안') !== -1;
+}
 
 function loadData() {
   return {
@@ -787,6 +799,7 @@ function switchTab(name) {
   if (name === 'weight') { renderWeightTable(); renderWeightChart2(); renderBodyTable(); }
   if (name === 'diet') { renderDietTable(); renderTodayDiet(); }
   if (name === 'history') { renderHistory(); populateExerciseProgressSelect(); }
+  if (name === 'workout') { autoSelectRoutineByDay(); loadRoutineTemplate(); }
 }
 
 // ===== GOAL CHECK =====
@@ -889,6 +902,20 @@ var currentExercises = [];
 
 function cloneRoutine(src) {
   return src.map(function(e) { return {name:e.name,weight:e.weight,sets:e.sets,reps:e.reps,note:e.note,setsDone:[]}; });
+}
+function autoSelectRoutineByDay() {
+  var day = new Date().getDay();
+  var sel = document.getElementById('workoutType');
+  var routine = ROUTINE_SCHEDULE[day];
+  if (routine) {
+    sel.value = routine;
+  } else {
+    var lastWorkout = data.workouts && data.workouts.length > 0 ? data.workouts[data.workouts.length - 1] : null;
+    if (lastWorkout && lastWorkout.type) {
+      sel.value = lastWorkout.type;
+    }
+    showToast('오늘은 쉬는 날입니다 💪', 'warn');
+  }
 }
 function loadRoutineTemplate() {
   var type = document.getElementById('workoutType').value;
@@ -998,12 +1025,26 @@ function renderExercises() {
     var controlRow = document.createElement('div');
     controlRow.style.cssText = 'display:flex;gap:6px';
 
-    var wInput = document.createElement('input');
-    wInput.type = 'number';
-    wInput.value = ex.weight;
-    wInput.step = '0.5';
-    wInput.style.cssText = 'width:75px;font-size:12px;padding:5px 8px';
-    wInput.title = '무게 수정';
+    var wInput;
+    if (isDumbbellExercise(ex.name)) {
+      wInput = document.createElement('select');
+      wInput.style.cssText = 'width:80px;font-size:12px;padding:4px 6px';
+      wInput.title = '무게 수정';
+      EGOJIN_WEIGHTS.forEach(function(w) {
+        var opt = document.createElement('option');
+        opt.value = w;
+        opt.textContent = w + ' kg';
+        if (ex.weight === w) opt.selected = true;
+        wInput.appendChild(opt);
+      });
+    } else {
+      wInput = document.createElement('input');
+      wInput.type = 'number';
+      wInput.value = ex.weight;
+      wInput.step = '0.5';
+      wInput.style.cssText = 'width:75px;font-size:12px;padding:5px 8px';
+      wInput.title = '무게 수정';
+    }
     (function(exIdx) {
       wInput.addEventListener('change', function() { updateWeight(exIdx, this.value); });
     })(idx);
@@ -1825,6 +1866,7 @@ function init() {
   renderWeightTable();
   renderDietTable();
   renderTodayDiet();
+  autoSelectRoutineByDay();
   loadRoutineTemplate();
 }
 
